@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+
+	<meta charset="UTF-8">
+	<title>RetroPython-p2</title>
+<!--     // <script src="http://apps.bdimg.com/libs/jquery/2.0.0/jquery.min.js"></script>
+    // <script type="text/javascript" src="http://cdn.bootcss.com/socket.io/1.4.8/socket.io.min.js"></script> -->
+	<!-- // <script src="js/jquery.min.js"></script> -->
+	<script src="./static/socket.io.min.js"></script>
+	<script src="./static/jquery.min.js"></script>
+	<style>
+
+	</style>
+
+	<script>
+
+var sendToSever = 'p1_to_pc'
+function deepCopy(p, c) {
+	var c = c || {};
+	for (var i in p) {
+		if (typeof p[i] === 'object') {
+			c[i] = (p[i].constructor === Array) ? [] : {};
+			deepCopy(p[i], c[i]);
+		} else {
+			c[i] = p[i];
+		}
+	}
+	return c;
+}
+
+
+int = parseInt
+float = parseFloat
+log = console.log
+debug = console.debug
+info = console.info
+table = console.table
+len=(x)=>x.length
+rn = (x)=> int(x*Math.random())
+function range (f,n,max) {
+	// 1.Python 用法 
+	// 2.执行 f(n['property']) 并返回新的 [] 或 {}
+	// range(10) =>[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+	// range(x=>x*2,5,10) =>[10, 12, 14, 16, 18]
+	// range(x=>x+x,['a', 'b', 'c']) 
+	// =>["aa", "bb", "cc"]
+
+	var flag = (typeof f == "number")
+
+	if(flag){
+		max =(typeof n == "number")?n:max
+		n = f
+		f = x=>x
+	}
+	var items = n
+	var obj = (n.constructor === Array)?[]:{}
+	if(typeof n == "number"){
+		obj = []
+		items = []
+		var i=max?n:0
+		max=max||n
+		while(i!=max){items.push(i);i++}
+	}
+ 	
+ 	for (var i in items) {
+ 		obj[i]=f(items[i])
+ 	}
+ 	return obj
+ } 
+
+sum = (arr)=>{
+        var summ = 0
+        for (var i in arr){
+                summ += arr[i]
+        }
+        return summ
+}
+
+
+
+var prot = 80
+var ad ='http://' + document.domain + ':'+prot+'/game'
+log(ad)
+var socket = io.connect(ad);
+
+
+socket.on('p2End', function(result) {
+    $('body').html(result+'')
+
+})
+
+
+socket.on('response', function(msg) {
+    log('response:' + msg.data);
+
+})
+
+
+socket.on('testLine', function(msg) {
+    log('testLine:' + msg.data);
+
+})
+socket.emit('testLine',{data:'p2 successed to pi!'})
+	
+</script>
+</head>
+
+<body>
+
+
+
+
+</body>
+
+<script>
+// var ctx = document.getElementById('canvas').getContext('2d');
+
+
+
+
+var player1 = [0,0,0]
+
+
+window.addEventListener('touchstart',function(e){
+	window.player1[2] = 1
+	socket.emit(window.sendToSever, window.player1)
+})
+window.addEventListener('touchend',function(e){
+
+	window.player1[2] = 0
+	socket.emit(window.sendToSever, window.player1)
+})
+
+$(document).keydown(function(event){
+
+	if([38,39,40,37,32].indexOf(event.keyCode)!=-1){
+		
+		event.preventDefault()
+		if(event.keyCode==38){window.player1[1]= 1}
+		if(event.keyCode==39){window.player1[0]= 1}
+		if(event.keyCode==40){window.player1[1]=-1}
+		if(event.keyCode==37){window.player1[0]=-1}
+		if(event.keyCode==32){window.player1[2]= 1}
+		socket.emit(window.sendToSever, window.player1)
+	}
+});
+$(document).keyup(function(event){
+
+	if([38,39,40,37,32].indexOf(event.keyCode)!=-1){
+		
+		event.preventDefault()
+		if(event.keyCode==38){window.player1[1]= 0}
+		if(event.keyCode==39){window.player1[0]= 0}
+		if(event.keyCode==40){window.player1[1]= 0}
+		if(event.keyCode==37){window.player1[0]= 0}
+		if(event.keyCode==32){window.player1[2]= 0}
+		socket.emit(window.sendToSever, window.player1)
+	}
+});
+
+var dealControl=(x)=>{
+		if(x>20){return 1}
+		if(x<-20){return -1}
+		return 0
+	}
+
+
+function orientationHandler(event) {
+
+	var control=[
+		dealControl(event.beta),
+		dealControl(event.gamma),
+	]
+	var changeTag = 0
+	if(control[0]!=window.player1[0]){
+		window.player1[0]=control[0]
+		changeTag = 1
+	}
+	if(control[1]!=window.player1[1]){
+		window.player1[1]=control[1]
+		changeTag = 1
+	}
+	if(changeTag==1){
+		socket.emit(window.sendToSever, window.player1)
+	}
+}
+
+
+
+if (window.DeviceOrientationEvent) {
+    window.addEventListener("deviceorientation", orientationHandler, true);
+} else {
+    document.body.innerHTML = "What user agent u r using???";
+}
+
+
+
+
+
+
+function controlToButton(control,py){
+	py=py||0
+	if(control[2]== 1){py.speed=1}
+	if(control[2]== 0){py.speed=0}	
+	if(control[0]== 1){py.button='r';return}
+	if(control[0]==-1){py.button='l';return}
+	if(control[1]== 1){py.button='u';return}
+	if(control[1]==-1){py.button='d';return}
+}
+
+
+// map.init(1)
+
+// py = map.pythons[0]
+// canvas.render()
+
+// setInterval(()=>{
+// 	controlToButton(window.player1,map.pythons[0])
+// 	map.pythons[0].move()
+// 	// socket.emit('buffer', map.code())
+// 	canvas.render()
+// },100)
+
+
+
+</script>
+
+</html>

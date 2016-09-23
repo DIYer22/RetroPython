@@ -1,0 +1,48 @@
+<!-- templates/message.html -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta http-equiv="Content-Language" content="zh-CN"/>
+        <title>实时消息</title>
+        <link rel="stylesheet" href="http://getbootstrap.com/2.3.2/assets/css/bootstrap.css">
+        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script type="text/javascript" src="http://cdn.bootcss.com/socket.io/1.4.8/socket.io.min.js"></script>
+        <script type="text/javascript" charset="utf-8">
+
+            // $(document).ready(function(){
+
+         var ad ='http://' + document.domain + ':8080/test'
+         log=console.log
+         log(ad)
+         var socket = io.connect(ad);
+         socket.on('my response', function(msg) {
+                log(1233333)
+                log('response' + msg.count + ': ' + msg.data);
+
+            });
+         socket.emit('my event', {data:5563})
+         log('end')
+         // setInterval(()=>{}
+         //    )
+
+        // })
+        </script>
+    </head>
+    <body>
+        <div class="header container">
+            <h1>实时消息</h1>
+            <ul class="tabs">
+                <li class="active">
+                    <a href="/">DEMO</a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="footer container">
+            <p>
+                &copy; Copyright by shonenada
+            </p>
+        </div>
+    </body>
+</html>

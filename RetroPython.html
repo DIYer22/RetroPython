@@ -1,0 +1,481 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+
+	<meta charset="UTF-8">
+	<title>RetroPython</title>
+<!--     // <script src="http://apps.bdimg.com/libs/jquery/2.0.0/jquery.min.js"></script>
+    // <script type="text/javascript" src="http://cdn.bootcss.com/socket.io/1.4.8/socket.io.min.js"></script> -->
+	<!-- // <script src="js/jquery.min.js"></script> -->
+	<script src="./static/socket.io.min.js"></script>
+	<script src="./static/jquery.min.js"></script>
+	<style>
+
+	</style>
+
+	<script>
+
+
+function deepCopy(p, c) {
+	var c = c || {};
+	for (var i in p) {
+		if (typeof p[i] === 'object') {
+			c[i] = (p[i].constructor === Array) ? [] : {};
+			deepCopy(p[i], c[i]);
+		} else {
+			c[i] = p[i];
+		}
+	}
+	return c;
+}
+
+
+int = parseInt
+float = parseFloat
+log = console.log
+debug = console.debug
+info = console.info
+table = console.table
+len=(x)=>x.length
+rn = (x)=> int(x*Math.random())
+function range (f,n,max) {
+	// 1.Python 用法 
+	// 2.执行 f(n['property']) 并返回新的 [] 或 {}
+	// range(10) =>[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+	// range(x=>x*2,5,10) =>[10, 12, 14, 16, 18]
+	// range(x=>x+x,['a', 'b', 'c']) 
+	// =>["aa", "bb", "cc"]
+
+	var flag = (typeof f == "number")
+
+	if(flag){
+		max =(typeof n == "number")?n:max
+		n = f
+		f = x=>x
+	}
+	var items = n
+	var obj = (n.constructor === Array)?[]:{}
+	if(typeof n == "number"){
+		obj = []
+		items = []
+		var i=max?n:0
+		max=max||n
+		while(i!=max){items.push(i);i++}
+	}
+ 	
+ 	for (var i in items) {
+ 		obj[i]=f(items[i])
+ 	}
+ 	return obj
+ } 
+
+sum = (arr)=>{
+        var summ = 0
+        for (var i in arr){
+                summ += arr[i]
+        }
+        return summ
+}
+
+
+
+var prot = 80
+var ad ='http://' + document.domain + ':'+prot+'/game'
+log(ad)
+var socket = io.connect(ad);
+socket.on('p2_to_p1', function(p2) {
+    window.player2 = p2
+
+})
+socket.on('p1_to_pc', function(p1) {
+    window.player1 = p1
+
+})
+
+socket.on('response', function(msg) {
+    log('response:' + msg.data);
+
+})
+socket.on('testLine', function(msg) {
+    log('testLine:' + msg.data);
+
+})
+socket.emit('testLine',{data:'p1 successed to pi!'})
+	
+</script>
+</head>
+
+<body>
+
+
+	<canvas id="canvas" width="500" height="400" style="border: 1px solid gray;">
+
+	</canvas>
+
+</body>
+
+<script>
+var ctx = document.getElementById('canvas').getContext('2d');
+
+
+
+
+var map = {
+	'width':8,
+	'height':8,
+	'hardStone':[],
+	'pythons':[],
+	'playerNum':1,
+	'render':()=>{canvas.render()},
+	'init':function(n) {
+		if(n==1){
+			var python = new creatPython()
+			python.body=this.getPythonBody()
+			this.pythons=[python]
+		}
+		if(n==2){
+			this.playerNum = 2
+			this.pythons[0] = new creatPython()
+			this.pythons[0].body = this.getPythonBody()
+
+			this.pythons[1] = new creatPython()
+			this.pythons[1].body = this.getPythonBody()
+		}
+	},
+	'defaultLen':4,
+	'getPythonBody':()=>{
+		return range(map.defaultLen).map(
+			(pos) => {	
+				var width = map.width
+				var height=map.height
+
+				var x,y
+				x = int(width/2) 
+
+				if(map.playerNum==2){
+					x = (len(map.pythons)==1)?int(width/4):int(width*3/4)
+				}
+			
+				y = height - pos-1
+
+				return [x,y]
+			}
+		)},
+	'getBuffer':function  () {
+		function fillBuffer (buffer,arr,vlue) {
+			vlue=vlue?vlue:1
+			arr.map((x)=>{
+				buffer[x[1]][x[0]]=vlue
+			})
+		}
+
+		buffer=range(this.height).map(()=>range(this.width).map(()=>0))
+
+		fillBuffer(buffer,this.hardStone)
+		if(typeof this.pythons[0] == 'object'){
+			this.pythons.map((python)=>fillBuffer(buffer,python.body))
+		}
+		return buffer
+
+	},
+	code:function() {
+		var buffer = this.getBuffer()
+
+		return range(map.width).map(function(w){
+		    return sum(
+		    	range(map.height).map(
+		    		function(h){
+
+		        	return buffer[h][w]*(2**h)
+		    	})
+		    	)
+		})
+
+	},
+	win:function  (p) {
+		
+		var r = [
+		"<br><br><h1>Die together!,no winer! </h1><br><h2>平局，同归于尽!</h2>",
+		"<br><br><h1>player "+p+" win!</h1><br><h2>恭喜恭喜 player "+p+"!</h2>",
+		"<br><br><h1>player "+p+" win!</h1><br><h2>恭喜恭喜 player "+p+"!</h2>"]
+
+		$('body').html(r[p])			
+		
+
+		socket.emit('end',p)
+		clearInterval(window.engine)
+
+	},
+	isDie:function () {
+		var map = window.map
+		var pys = map.pythons
+		var tag = [0,0]
+
+		var arr = [...pys[0].body.slice(0,-1),...pys[1].body.slice(0,-1)]
+		
+		var cmp = (x,y)=>{
+			return (x[0]==y[0])&&(x[1]==y[1])
+		}
+		var head = [0,0]
+		for (var i in pys){
+			head[i] = pys[i].body[pys[i].body.length-1]
+			tag[i]=sum(arr.map(function(pos) {
+				return cmp(head[i],pos)
+			}))
+		}
+		log('tag',tag)
+		if(cmp(head[0],head[1])){map.win(0) ;return}
+		if(tag[0]!=0||tag[1]!=0){
+			if(tag[0]!=0&&tag[1]!=0){map.win(0) ;return}
+					
+			if(tag[0]!=0){map.win(2) ;return}
+			
+			if(tag[1]!=0){map.win(1) ;return}
+		}	
+	}
+}
+
+
+
+
+function creatPython () {
+	return {
+		'body':[],
+		'button':'u', // 按钮 ['u','r','d','l']
+		'direct':'u', //现在的朝向 ['u','r','d','l']
+		'turn':'f', // ['f','r','b','l']
+		'speed':1,
+		directArr:['u','r','d','l'],
+		turnDic:{'f':0,'r':1,'b':2,'l':3},
+		getNewHead:function(head,d,tag) {
+			var newHead
+			if(d=='u'){newHead = [head[0],head[1]-1]}
+			if(d=='r'){newHead = [head[0]+1,head[1]]}
+			if(d=='d'){newHead = [head[0],head[1]+1]}
+			if(d=='l'){newHead = [head[0]-1,head[1]]}
+			if(tag){
+				return newHead
+			}
+			return [(newHead[0]+map.width)%map.width,(newHead[1]+map.height)%map.height]
+		},
+		time:3,
+		move:function () {
+			if (this.speed == 0){
+				if (this.time<3){
+					this.time+=1
+					return
+				}else{
+					this.time=0
+				}
+			}else{
+				this.time=0
+			}
+			// body...
+			var arr = this.directArr
+			var d = this.direct
+			if (this.button==arr[(arr.indexOf(d)+2)%4]){
+				this.button = d
+			}
+			
+			var s = this.speed
+			var body = this.body
+			var head = body[len(body)-1]
+			
+
+			this.direct = this.button
+			var newHead = this.getNewHead(head,this.button)
+
+			this.body=this.body.slice(1)
+			this.body.push(newHead)
+			// info(newDirect,head,newHead)
+
+			// log(this.body,newHead)
+			
+
+		},
+		moveByTurn:function () {
+			
+			// body...
+			var d = this.direct
+			var t = this.turn
+
+			var body = this.body
+			var head = body[len(body)-1]
+			var newDirect = this.directArr[(this.directArr.indexOf(d)+this.turnDic[t])%4]
+			this.direct = newDirect
+			var newHead = this.getNewHead(head,newDirect)
+			// 各种判断
+			this.body=this.body.slice(1)
+			this.body.push(newHead)
+			// info(newDirect,head,newHead)
+
+			// log(this.body,newHead)
+			canvas.render()
+
+		},
+	}
+}
+
+
+canvasDiv = 'canvas'
+var canvas = {
+	buffer:[],
+	width:document.getElementById(canvasDiv).width,
+	height:document.getElementById(canvasDiv).height,
+	mapW:map.width,
+	mapH:map.height,
+	lineColor:'rgba(0,0,0,0.1)',
+	blockColor:'rgba(0,0,0,0.4)',
+	bgColor:'rgba(0,0,0,0.1)',
+	size:function(){
+		var w=this.width/this.mapW
+		var h=this.height/this.mapH
+		return (w<h)?w:h
+	},
+	drewSquare:function(x,y,size,color) {
+		color=color||this.bgColor
+		ctx.save()
+		ctx.fillStyle=color
+		ctx.strokeStyle=this.lineColor
+		ctx.translate(x,y)
+		ctx.beginPath()
+		ctx.moveTo(0,0)
+		ctx.lineTo(size,0)
+		ctx.lineTo(size,size)
+		ctx.lineTo(0,size)
+		ctx.lineTo(0,0)
+		ctx.fill()
+		ctx.stroke()
+		ctx.restore()
+		// log(x,y)
+	},
+	render:function() {
+		ctx.clearRect(0,0,this.width,this.height);
+		var size = this.size()
+		var x=(this.width - this.mapW*size)/2
+		var y=(this.height - this.mapH*size)/2
+
+		var color
+		var buffer = map.getBuffer()
+		// console.table(buffer)
+		for(var i in range(this.mapH)){
+
+			for(var j in range(this.mapW)){
+				
+				color=[this.bgColor,this.blockColor][buffer[i][j]]
+				this.drewSquare(j*size+x,i*size+y,size,color)
+				
+			}
+		}
+
+	},
+
+}
+
+
+
+var player1 = [0,0,0]
+var player2 = [0,0,0]
+
+window.addEventListener('touchstart',function(e){
+	window.player1[2] = 1
+})
+window.addEventListener('touchend',function(e){
+
+	window.player1[2] = 0
+})
+
+$(document).keydown(function(event){
+   
+	if([38,39,40,37,32].indexOf(event.keyCode)!=-1){
+		
+		event.preventDefault()
+		if(event.keyCode==38){window.player1[1]= 1}
+		if(event.keyCode==39){window.player1[0]= 1}
+		if(event.keyCode==40){window.player1[1]=-1}
+		if(event.keyCode==37){window.player1[0]=-1}
+		if(event.keyCode==32){window.player1[2]= 1}
+	}
+});
+$(document).keyup(function(event){
+
+	if([38,39,40,37,32].indexOf(event.keyCode)!=-1){
+		
+		event.preventDefault()
+		if(event.keyCode==38){window.player1[1]= 0}
+		if(event.keyCode==39){window.player1[0]= 0}
+		if(event.keyCode==40){window.player1[1]= 0}
+		if(event.keyCode==37){window.player1[0]= 0}
+		if(event.keyCode==32){window.player1[2]= 0}
+	}
+});
+
+var dealControl=(x)=>{
+		if(x>20){return 1}
+		if(x<-20){return -1}
+		return 0
+	}
+
+
+
+function orientationHandler(event) {
+
+	var control=[
+		dealControl(event.beta),
+		dealControl(event.gamma),
+	]
+	if(control[0]!=window.player1[0]){
+		window.player1[0]=control[0]
+	}
+	if(control[1]!=window.player1[1]){
+		window.player1[1]=control[1]
+	}
+}
+
+
+
+if (window.DeviceOrientationEvent) {
+    window.addEventListener("deviceorientation", orientationHandler, true);
+} else {
+    document.body.innerHTML = "What user agent u r using???";
+}
+
+
+
+
+function controlToButton(control,py){
+	py=py||0
+	if(control[2]== 1){py.speed=1}
+	if(control[2]== 0){py.speed=0}	
+	if(control[0]== 1){py.button='r';return}
+	if(control[0]==-1){py.button='l';return}
+	if(control[1]== 1){py.button='u';return}
+	if(control[1]==-1){py.button='d';return}
+}
+
+map.init(2)
+// table(map.getBuffer() )
+// py = map.pythons[0]
+canvas.render()
+
+
+var engine = setInterval(()=>{
+	controlToButton(window.player1,map.pythons[0])
+	map.pythons[0].move()
+	if(map.playerNum==2){
+		controlToButton(window.player2,map.pythons[1])
+		map.pythons[1].move()
+	}
+
+	// socket.emit('buffer', map.code())
+	window.map.isDie()
+	canvas.render()
+},100)
+
+
+
+
+</script>
+
+</html>

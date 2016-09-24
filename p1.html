@@ -4,14 +4,16 @@
 <head>
 
 	<meta charset="UTF-8">
-	<title>RetroPython-p2</title>
+	<title>RetroPython-p1</title>
 <!--     // <script src="http://apps.bdimg.com/libs/jquery/2.0.0/jquery.min.js"></script>
     // <script type="text/javascript" src="http://cdn.bootcss.com/socket.io/1.4.8/socket.io.min.js"></script> -->
 	<!-- // <script src="js/jquery.min.js"></script> -->
-	<script src="./static/socket.io.min.js"></script>
-	<script src="./static/jquery.min.js"></script>
+	<script src="/static/socket.io.min.js"></script>
+	<script src="/static/jquery.min.js"></script>
 	<style>
-
+	p{
+		font-size: 50px!important;
+	}
 	</style>
 
 	<script>
@@ -86,8 +88,18 @@ log(ad)
 var socket = io.connect(ad);
 
 
-socket.on('p2End', function(result) {
-    $('body').html(result+'')
+socket.on('end', function(p) {
+	var r = [
+		"<br><br><h1>Die together!,no winer! </h1><br><h2>平局，同归于尽!</h2>",
+		"<br><br><h1>player "+p+" win!</h1><br><h2>真遗憾，你输了!</h2>",
+		"<br><br><h1>player "+p+" win!</h1><br><h2>恭喜恭喜，你赢了!</h2>"]
+	
+	if(sendToSever!='p2_to_p1'){
+		r=[r[0],r[2],r[1]]
+	}
+	var html = r[p]
+
+    $('#show').html('<br><hr><br>刚才比赛的结果：' + html )
 
 })
 
@@ -108,9 +120,24 @@ socket.emit('testLine',{data:'p2 successed to pi!'})
 </head>
 
 <body>
+<h2>Player 1 info:</h2>
+	<p>前后倾角：<span id="x">0</span></p>
+	<p>左右倾角：<span id="y">0</span></p>
+	<p>是否加速：<span id="z">0</span></p>
+<div id='intro'>
+<h2>
+	说明：<br>将手机横着放，水平于地平面 <br>
+	朝前后左右方向倾斜 以控制小蛇 <br>
+	点击屏幕获得加速 <br><br>
 
+	<small>RetroPython code by UCE 小磊</small>
+</h2>
+</div>
 
+<div id='show'>
 
+</div>
+<div id="null" style="width:100%;position:fixed;top:0px;left:0px;height:100%;z-index=2" ></div>
 
 </body>
 
@@ -122,15 +149,24 @@ socket.emit('testLine',{data:'p2 successed to pi!'})
 
 var player1 = [0,0,0]
 
+function emit () {
+	// body...
+	$('#x').html(window.player1[1])
+	$('#y').html(window.player1[0])
+	$('#z').html(window.player1[2]?true:false)
+	socket.emit(window.sendToSever, window.player1)
+	socket.emit(window.sendToSever, window.player1)
+
+}
 
 window.addEventListener('touchstart',function(e){
 	window.player1[2] = 1
-	socket.emit(window.sendToSever, window.player1)
+	window.emit()
 })
 window.addEventListener('touchend',function(e){
 
 	window.player1[2] = 0
-	socket.emit(window.sendToSever, window.player1)
+	window.emit()
 })
 
 $(document).keydown(function(event){
@@ -143,7 +179,7 @@ $(document).keydown(function(event){
 		if(event.keyCode==40){window.player1[1]=-1}
 		if(event.keyCode==37){window.player1[0]=-1}
 		if(event.keyCode==32){window.player1[2]= 1}
-		socket.emit(window.sendToSever, window.player1)
+		window.emit()
 	}
 });
 $(document).keyup(function(event){
@@ -156,7 +192,7 @@ $(document).keyup(function(event){
 		if(event.keyCode==40){window.player1[1]= 0}
 		if(event.keyCode==37){window.player1[0]= 0}
 		if(event.keyCode==32){window.player1[2]= 0}
-		socket.emit(window.sendToSever, window.player1)
+		window.emit()
 	}
 });
 
@@ -173,6 +209,8 @@ function orientationHandler(event) {
 		dealControl(event.beta),
 		dealControl(event.gamma),
 	]
+
+
 	var changeTag = 0
 	if(control[0]!=window.player1[0]){
 		window.player1[0]=control[0]
@@ -183,7 +221,7 @@ function orientationHandler(event) {
 		changeTag = 1
 	}
 	if(changeTag==1){
-		socket.emit(window.sendToSever, window.player1)
+		window.emit()
 	}
 }
 

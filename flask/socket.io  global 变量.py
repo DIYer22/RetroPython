@@ -41,11 +41,10 @@ app.debug = False
 
 socketio = SocketIO(app)
 
-import os
-print os.path.abspath('.')
+
 path = r'C:/Users/yl/Desktop/py/python/raspberry/RetroPython/'
 if is_pi==1:
-    path = './'
+    path = ''
 
 
 players = [0,0]
@@ -62,8 +61,9 @@ def page_not_found(e):
 
 @socketio.on('disconnect', namespace='/game')
 def test_disconnect():
+    global players
+    players=[0,0]
     print('Client disconnected')
-    
     
 @app.route('/canvas')
 def show_canvas():
@@ -73,17 +73,30 @@ def show_canvas():
     f.close()
     return html
 
-@app.route('/0')
-def get_0_page():
-
-    return redirect('/canvas')
-
 
     
 @app.route('/')
 def get_index_page():
-
-    return redirect('/2')
+    global players
+    if is_pi ==0:
+        if players[0]==0:
+            g.rul = '/1'
+            return redirect(g.rul)
+        if players[1]==0:
+            g.rul = '/2'
+            return redirect(g.rul)
+        abort(403)
+    if is_pi ==1:
+        if players[0]!=0:
+            
+            if players[1]!=0:
+                abort(403)
+            else:
+                player[1]=0
+                g.rul = '/2'
+                return redirect(g.rul)
+    g.rul = '/1'
+    return redirect(g.rul)
 
 
 
@@ -97,7 +110,10 @@ def get_static(filee):
 
 @app.route('/2')
 def get_p2():
-
+    global players
+    if players[1] !=0:
+        abort(403)
+    players[1] = 1
     f = open(path+'p2.html')
     html = f.read()
     f.close()
@@ -105,7 +121,16 @@ def get_p2():
     
 @app.route('/1')
 def get_p1():
-
+    global players
+    if is_pi == 1:
+        h = 'RetroPython.html'
+        f = open(path + h)
+        html = f.read()
+        f.close()
+        return html
+    if players[0] !=0:
+        abort(403)
+    players[0] = 1
     f = open(path+'p1.html')
     html = f.read()
     f.close()
@@ -129,20 +154,15 @@ def p2_to_p1(p1):
 @socketio.on('end', namespace='/game')
 def end(result): # game over
     emit('end', result, broadcast=True)
-    
-    message = "p"+str(result)+" win! "
-    if is_pi == 0:
-        return
+
+@socketio.on('led', namespace='/game')
+def led_end(result):
+    message = "player "+resultp+" win!  "
     if result == 0:
-        message == 'Die together!,no winer! '    
-    for i in range(2):
-        device.show_message(message, font=SINCLAIR_FONT)
-        
-@socketio.on('buffer', namespace='/game')
-def led_buffer(buff):
-    code_buffer(buff)
-    
-    
+        message == 'Die together!,no winer! '        
+#    for i in range(3):
+#        device.show_message(message, font=SINCLAIR_FONT)
+
 if __name__ == "__main__":
 
     socketio.run(app, host='0.0.0.0', port=80)

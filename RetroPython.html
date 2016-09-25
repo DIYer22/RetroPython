@@ -17,6 +17,8 @@
 	<script>
 var isPi = 0
 
+var prot = 80
+
 function deepCopy(p, c) {
 	var c = c || {};
 	for (var i in p) {
@@ -81,23 +83,25 @@ var cmp = (x,y)=>{
 			return (x[0]==y[0])&&(x[1]==y[1])
 }
 
+function refresh (argument) {
+	if(window.engineId == null&&p2[2]){
+	    	window.history.go(0)
+	    }
+}
 
-var prot = 80
+
+
 var ad ='http://' + document.domain + ':'+prot+'/game'
 log(ad)
 var socket = io.connect(ad);
 socket.on('p2_to_p1', function(p2) {
     window.player2 = p2
-    if(window.engineId == null&&p2[2]){
-    	window.history.go(0)
-    }
+    window.refresh()
 
 })
 socket.on('p1_to_pc', function(p1) {
     window.player1 = p1
-    if(window.engineId == null&&p1[2]){
-    	window.history.go(0)
-    }
+    window.refresh()
 
 })
 
@@ -132,6 +136,7 @@ var ctx = document.getElementById('canvas').getContext('2d');
 
 
 var map = {
+	// 游戏地图
 	'width':20,
 	'height':20,
 	'defaultLen':8,
@@ -171,6 +176,7 @@ var map = {
 	},
 	'render':()=>{canvas.render()},
 	'init':function(n) {
+		// 初始化 n 为 人数 但 1人模式已经废了
 		if(n==1){
 			var python = new creatPython()
 			python.body=this.getPythonBody()
@@ -188,6 +194,7 @@ var map = {
 	},
 	
 	'getPythonBody':()=>{
+		// 初始化时的py
 		return range(map.defaultLen).map(
 			(pos) => {	
 				var width = map.width
@@ -206,6 +213,7 @@ var map = {
 			}
 		)},
 	'getBuffer':function  () {
+		// 返回 二维数组 包含每个像素点的值
 		function fillBuffer (buffer,arr,vlue) {
 			vlue=vlue?vlue:1
 			arr.map((x)=>{
@@ -227,6 +235,7 @@ var map = {
 
 	},
 	code:function() {
+		// 对 buffer 转换为 max7219.device._buffer 以减少数据传输和处理
 		var buffer = this.getBuffer()
 
 		return range(map.width).map(function(w){
@@ -241,7 +250,7 @@ var map = {
 
 	},
 	win:function  (p) {
-		
+		// 游戏结束后的处理 p 为 0:和局, 1:player1赢, 2:player2赢,
 		var r = [
 		"<br><br><h1>Die together!,no winer! </h1><br><h2>平局，同归于尽!</h2>",
 		"<br><br><h1>player "+p+" win!</h1><br><h2>恭喜恭喜 player "+p+"!</h2>",
@@ -257,23 +266,29 @@ var map = {
 
 	},
 	isDie:function () {
+		// 判断是否死亡
 		var map = window.map
 		var pys = map.pythons
-		var tag = [0,0]
+		
 
 		var arr = [...pys[0].body.slice(0,-1),...pys[1].body.slice(0,-1)]
 		
 		
-		var head = [0,0]
+		var head = [0,0] // 存储两条蛇的头
+		var tag = [0,0] // 存放是否相撞
 		for (var i in pys){
 			head[i] = pys[i].body[pys[i].body.length-1]
+			// 判断是否和非头的body相撞
 			tag[i]=sum(arr.map(function(pos) {
 				return cmp(head[i],pos)
 			}))
 		}
 
+		// 若两头相等 则平局
 		if(cmp(head[0],head[1])){map.win(0) ;return}
+
 		if(tag[0]!=0||tag[1]!=0){
+			// 判断输赢
 			if(tag[0]!=0&&tag[1]!=0){map.win(0) ;return}
 					
 			if(tag[0]!=0){map.win(2) ;return}
@@ -281,6 +296,7 @@ var map = {
 			if(tag[1]!=0){map.win(1) ;return}
 		}
 		if(cmp(map.apple,[-1,-1])){
+			// 若apple 被吃了 最后来创造新的
 			map.creatApple()
 		}	
 	}
@@ -289,14 +305,17 @@ var map = {
 
 function creatPython () {
 	return {
-		'body':[],
-		'button':'u', // 按钮 ['u','r','d','l']
+		// 生成 Python 实例
+		'body':[], // 蛇本身 body[-1] 为头的坐标
+		'button':'u', // 玩家按钮 ['u','r','d','l']
 		'direct':'u', //现在的朝向 ['u','r','d','l']
 		'turn':'f', // ['f','r','b','l']
 		'speed':1,
 		directArr:['u','r','d','l'],
 		turnDic:{'f':0,'r':1,'b':2,'l':3},
 		getNewHead:function(head,d,tag) {
+			// 获得下一步 当前头 direct 
+			// tag 判断是否可以夸边界（未用）
 			var newHead
 			if(d=='u'){newHead = [head[0],head[1]-1]}
 			if(d=='r'){newHead = [head[0]+1,head[1]]}
@@ -307,9 +326,10 @@ function creatPython () {
 			}
 			return [(newHead[0]+map.width)%map.width,(newHead[1]+map.height)%map.height]
 		},
-		time:3,
+		time:3, // 记录未加速状态下的循环次数
 		move:function () {
 			if (this.speed == 0){
+			// 判断并处理未加速状态下的 记录
 				if (this.time<3){
 					this.time+=1
 					return
@@ -319,9 +339,10 @@ function creatPython () {
 			}else{
 				this.time=0
 			}
-			// body...
+			
 			var arr = this.directArr
 			var d = this.direct
+			// 若方向与与当前方向相反 方向不变
 			if (this.button==arr[(arr.indexOf(d)+2)%4]){
 				this.button = d
 			}
@@ -329,10 +350,10 @@ function creatPython () {
 			var s = this.speed
 			var body = this.body
 			var head = body[len(body)-1]
-			
-
 			this.direct = this.button
+
 			var newHead = this.getNewHead(head,this.button)
+			// 若没吃到apple 削去 尾巴
 			if(map.isEatAppple(newHead)==0){
 				this.body=this.body.slice(1)
 			}
@@ -345,8 +366,8 @@ function creatPython () {
 
 		},
 		moveByTurn:function () {
-			
-			// body...
+			// 已经不用了 采用左转右转方式移动
+
 			var d = this.direct
 			var t = this.turn
 
@@ -370,23 +391,26 @@ function creatPython () {
 
 canvasDiv = 'canvas'
 var canvas = {
+	// 用于canvas 渲染
 	buffer:[],
 	width:document.getElementById(canvasDiv).width,
 	height:document.getElementById(canvasDiv).height,
 	mapW:map.width,
 	mapH:map.height,
 	lineColor:'rgba(0,0,0,0.1)',
-	blockColor:'rgba(0,0,0,0.4)',
+	blockColor:'rgba(0,0,0,0.4)', // 可以不用了
 	bgColor:'rgba(0,0,0,0.1)',
 	py1Color:'blue',
 	py2Color:'gray',
 	appleColor:'red',
 	size:function(){
+		// 返回单个方块的最佳大小
 		var w=this.width/this.mapW
 		var h=this.height/this.mapH
 		return (w<h)?w:h
 	},
 	drewSquare:function(x,y,size,color) {
+		// 画方块
 		color=color||this.bgColor
 		ctx.save()
 		ctx.fillStyle=color
@@ -406,17 +430,25 @@ var canvas = {
 	render:function() {
 		ctx.clearRect(0,0,this.width,this.height);
 		var size = this.size()
+		// x, y 为偏移量
 		var x=(this.width - this.mapW*size)/2
 		var y=(this.height - this.mapH*size)/2
 
 		var color
 		var buffer = map.getBuffer()
-		// console.table(buffer)
+		// 画Squares
 		for(var i in range(this.mapH)){
 
 			for(var j in range(this.mapW)){
 				
-				color=[this.bgColor,this.py1Color,this.py2Color,this.appleColor][buffer[i][j]]
+				color=[
+					this.bgColor,
+					this.py1Color,
+					this.py2Color,
+					this.appleColor
+				][
+					buffer[i][j]
+				]
 				this.drewSquare(j*size+x,i*size+y,size,color)
 				
 			}
@@ -427,20 +459,14 @@ var canvas = {
 }
 
 
-
+// 控制数据存放 接口变量
 var player1 = [0,0,0]
 var player2 = [0,0,0]
 
-if (isPi == 1){
-	var body ='\
-	<p>前后倾角：<span id="x">0</span></p>\
-	<p>左右倾角：<span id="y">0</span></p>\
-	<p>是否加速：<span id="z">0</span></p>\
-<div id="show"></div>\
-<div id="null" style="width:100%;position:fixed;top:0px;left:0px;height:100%;z-index=2" ></div>'
-	$('body').html(body)
-}
+
+
 function showXY () {
+	// 在屏幕上显示控制数据
 	if (window.isPi != 1){return}
 	$('#x').html(window.player1[1])
 	$('#y').html(window.player1[0])
@@ -455,9 +481,7 @@ window.addEventListener('touchend',function(e){
 
 	window.player1[2] = 0
 	window.showXY()
-    if(window.engineId == null){
-		window.history.go(0)
-	}
+    window.refresh()
 
 })
 
@@ -484,15 +508,14 @@ $(document).keyup(function(event){
 		if(event.keyCode==40){window.player1[1]= 0}
 		if(event.keyCode==37){window.player1[0]= 0}
 		if(event.keyCode==32){window.player1[2]= 0;
-		    if(window.engineId == null){
-    			window.history.go(0)
-	    	}
+		    window.refresh()
 		}
 		window.showXY()
 	}
 });
 
 var dealControl=(x)=>{
+	// 转换原始角度数据
 		if(x>20){return 1}
 		if(x<-20){return -1}
 		return 0
@@ -532,6 +555,7 @@ if (window.DeviceOrientationEvent) {
 
 
 function controlToButton(control,py){
+	// 将控制接口用于 python.button
 	py=py||0
 	if(control[2]== 1){py.speed=1}
 	if(control[2]== 0){py.speed=0}	
@@ -547,7 +571,10 @@ map.init(2)
 canvas.render()
 
 var engine = ()=>{
+	// 每一帧的处理
+	// 1. 将控制接口应用于python.button
 	controlToButton(window.player1,map.pythons[0])
+	// 2. 处理运行后的
 	map.pythons[0].move()
 	if(map.playerNum==2){
 		controlToButton(window.player2,map.pythons[1])
@@ -570,7 +597,16 @@ var enginePi = ()=>{
 	socket.emit('buffer', map.code())
 }
 
-if(isPi==1){engine=enginePi}
+if(isPi==1){
+	engine=enginePi
+	var body ='\
+	<p>前后倾角：<span id="x">0</span></p>\
+	<p>左右倾角：<span id="y">0</span></p>\
+	<p>是否加速：<span id="z">0</span></p>\
+<div id="show"></div>\
+<div id="null" style="width:100%;position:fixed;top:0px;left:0px;height:100%;z-index=2" ></div>'
+	$('body').html(body)
+	}
 var engineId = setInterval(engine,100)
 
 

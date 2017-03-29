@@ -44,7 +44,7 @@ socketio = SocketIO(app)
 import os
 print os.path.abspath('.')
 path = r'C:/Users/yl/Desktop/py/python/raspberry/RetroPython/'
-paht = '../'
+path = '../'
 if is_pi==1:
     path = './'
 

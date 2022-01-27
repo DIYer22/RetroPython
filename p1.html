@@ -230,7 +230,7 @@ function orientationHandler(event) {
 if (window.DeviceOrientationEvent) {
     window.addEventListener("deviceorientation", orientationHandler, true);
 } else {
-    document.body.innerHTML = "What user agent u r using???";
+    document.body.innerHTML = "Can't found window.DeviceOrientationEvent, Maybe need one of them: \n1) using 127.0.0.1 url  \n2)using fire fox \n3) hosted over https.";
 }
 
 
